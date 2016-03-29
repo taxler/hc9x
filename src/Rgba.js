@@ -1,4 +1,4 @@
-(function(hc9x){
+define(function(){
 
 
 'use strict';
@@ -28,7 +28,7 @@ RgbaBase.prototype = {
 	},
 	toElement: function() {
 		var el = document.createElement('SCRIPT');
-		el.type = 'text/x-hc9x-palette';
+		el.type = Rgba.mimeType;
 		el.appendChild(document.createTextNode(this.toString()));
 		return el;
 	},
@@ -314,10 +314,11 @@ Rgba.loadFrom = function(contextElement, identifier) {
 
 
 // exports
-hc9x.Rgba = Rgba;
-hc9x.Rgba.Collection = RgbaCollection;
-hc9x.Rgba.Range = RgbaRange;
-hc9x.Rgba.Union = RgbaUnion;
+Rgba.Collection = RgbaCollection;
+Rgba.Range = RgbaRange;
+Rgba.Union = RgbaUnion;
+Rgba.mimeType = 'text/x-hc9x-palette';
 
+return Rgba;
 
-})( ('hc9x' in window) ? window.hc9x : window.hc9x = {} );
+});
