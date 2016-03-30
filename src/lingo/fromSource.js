@@ -529,30 +529,36 @@ define(function() {
 			}
 		}
 		else if (tokens[1] === 'with') {
-			// 0: repeat with
-			// 1: x
-			// 2: 0
-			// 3: down to
-			// 4: y
-			if (tokens.length < 7) throw new TypeError('Invalid syntax'); 
-			tokens.splice(0, 2, 'repeat with');
-			if (!RX_WORD.test(tokens[1]) || tokens[2] !== '=') throw new TypeError('Invalid syntax');
-			tokens.splice(2, 1);
-			doExpression(tokens, 2);
-			var negative;
-			if (tokens[3] === 'down') {
-				if (tokens[4] !== 'to') {
+			if (tokens.length < 5) throw new TypeError('Invalid syntax');
+			var counter = tokens[2];
+			if (!RX_WORD.test(counter)) throw new TypeError('Invalid syntax');
+			if (tokens[3] === 'in') {
+				doExpression(tokens, 4);
+				if (tokens.length !== 5) {
+					throw new TypeError('Invalid syntax');
+				} 
+				lines[linePos] = tokens = ['repeat in', counter, tokens[4]];
+			}
+			else if (tokens[3] === '=') {
+				tokens.splice(0, 4, 'repeat with', counter);
+				doExpression(tokens, 2);
+				if (tokens[3] === 'down') {
+					if (tokens[4] !== 'to') {
+						throw new TypeError('Invalid syntax');
+					}
+					tokens.splice(3, 2, 'down to');
+				}
+				else {
+					if (tokens[3] !== 'to') {
+						throw new TypeError('Invalid syntax');
+					}
+				}
+				doExpression(tokens, 4);
+				if (tokens.length !== 5) {
 					throw new TypeError('Invalid syntax');
 				}
-				tokens.splice(3, 2, 'down to');
 			}
 			else {
-				if (tokens[3] !== 'to') {
-					throw new TypeError('Invalid syntax');
-				}
-			}
-			doExpression(tokens, 4);
-			if (tokens.length !== 5) {
 				throw new TypeError('Invalid syntax');
 			}
 		}
