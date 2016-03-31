@@ -22,8 +22,8 @@ define(function() {
 	function isEnd(ofWhat, thing) {
 		if (typeof thing === 'undefined') throw new TypeError('Invalid syntax: Expecting end ' + ofWhat);
 		if (thing === 'end') return true;
-		if (typeof thing === 'string') return false;
-		return thing[0] === 'end' && thing.length === 2 && (thing[1] === ofWhat || true);
+		if (typeof thing === 'string') return (thing === 'end');
+		return thing[0] === 'end';
 	}
 
 	function doFuncWithParams(lines, linePos) {
@@ -172,6 +172,9 @@ define(function() {
 			case 'enter':
 				tokens[tokenPos] = '"\n"';
 				return;
+			case 'empty':
+				tokens[tokenPos] = '""';
+				return;
 			case 'return':
 				tokens[tokenPos] = '"\r"';
 				return;
@@ -280,12 +283,6 @@ define(function() {
 				tokens[tokenPos + 1],
 				tokens[tokenPos],
 				tokens[tokenPos + 2]];
-			if (/^&{1,2}$/.test(binop[0])) {
-				if (typeof binop[1] === 'string' && typeof binop[2] === 'string'
-						&& binop[1].charAt(0) === '"' && binop[2].charAt(0) === '"') {
-					binop = binop[1].slice(0, -1) + (binop[0] === '&&' ? ' ' : '') + binop[2].slice(1);
-				}
-			}
 			tokens.splice(tokenPos, 3, binop);
 		}
 	}
@@ -591,6 +588,20 @@ define(function() {
 		}
 	}
 
+	function makeStringExpression(str) {
+		var quotePos = str.lastIndexOf('"');
+		if (quotePos === -1 || str === '"') return '"' + str + '"';
+		if (quotePos === 0) {
+			return ['&', '"""', '"' + str.substr(1) + '"'];
+		}
+		if (quotePos === str.length-1) {
+			return ['&', makeStringExpression(str.substr(0, quotePos)), '"""'];
+		}
+		return ['&',
+			['&', makeStringExpression(str.substr(0, quotePos)), '"""'],
+			'"' + str.substr(quotePos+1) + '"'];
+	}
+
 	function doWhenBlock(lines, linePos) {
 		var tokens = lines[linePos];
 		if (tokens.length < 3 || !/^((key|mouse)(up|down)|timeout)$/.test(tokens[1]) || tokens[2] !== 'then') {
@@ -599,7 +610,8 @@ define(function() {
 		if (tokens.length === 3) {
 			throw new Error('TODO');
 		}
-		lines[linePos] = ['set', ['the', tokens[1]+'script'], ' ' + tokens.slice(3).join(' ')];
+
+		lines[linePos] = ['set', ['the', tokens[1]+'script'], makeStringExpression(' ' + tokens.slice(3).join(' '))];
 	}
 
 	function doTellBlock(lines, linePos) {
