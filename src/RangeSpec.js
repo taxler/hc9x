@@ -63,6 +63,46 @@ define(function() {
 		getTotalLengthWhere: function(condition) {
 			return this.ranges.filter(condition).reduce(reduce_addLength, 0);
 		},
+		slice: function(startOffset, endOffset) {
+			var set = new RangeSpecSet();
+			if (endOffset <= startOffset) {
+				if (endOffset < startOffset) {
+					console.warn('remember slice() takes two offsets, not an offset and a length');
+				}
+				return set;
+			}
+			var i = this.findIndexForOffset(startOffset);
+			if (i < 0) {
+				i = ~i;
+				if (i === this.ranges.length) return set;
+				startOffset = this.ranges[i].offset;
+			}
+			else {
+				var range = this.ranges[i];
+				var diff = startOffset - range.offset;
+				if (diff > 0) {
+					if (endOffset <= range.afterOffset) {
+						set.put(this.ranges[i].getSubrange(diff, endOffset - (range.offset + diff)));
+						return;
+					}
+					set.put(range.getSubrange(diff, range.length - diff));
+					startOffset = range.afterOffset;
+					i++;
+				}
+			}
+			for (; i < this.ranges.length && endOffset > this.ranges[i].offset; i++) {
+				var endDiff = endOffset - this.ranges[i].afterOffset;
+				if (endDiff < 0) {
+					set.put(this.ranges[i].getSubrange(0, endOffset - this.ranges[i].offset));
+					break;
+				}
+				set.put(this.ranges[i]);
+				if (endDiff === 0) {
+					break;
+				}
+			}
+			return set;
+		},
 		put: function(range) {
 			if (range.length === 0) return;
 			var i = this.findIndexForOffset(range.offset);
