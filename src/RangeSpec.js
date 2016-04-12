@@ -65,6 +65,14 @@ define(function() {
 		getTotalLengthWhere: function(condition) {
 			return this.ranges.filter(condition).reduce(reduce_addLength, 0);
 		},
+		get isContiguous() {
+			for (var i = this.ranges.length - 2; i >= 0; i--) {
+				if (this.ranges[i].afterOffset !== this.ranges[i + 1].offset) {
+					return false;
+				}
+			}
+			return true;
+		},
 		slice: function(startOffset, endOffset) {
 			var set = new RangeSpecSet();
 			if (endOffset <= startOffset) {
