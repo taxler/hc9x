@@ -27,7 +27,7 @@ define(['Promise', './PiecemealDownload'], function(Promise, PiecemealDownload) 
 					if (pieceOffset >= (offset + length)) return;
 					if ((pieceOffset + pieceBytes.length) <= offset) return;
 					var diff = pieceOffset - offset;
-					pieceBytes = pieceBytes.subarray(diff, Math.min(pieceBytes.length, diff + pieceBytes.length));
+					pieceBytes = pieceBytes.subarray(diff, Math.min(pieceBytes.length, diff + length));
 					buf.set(pieceBytes, pieceOffset - offset);
 					count += pieceBytes.length;
 					if (count === length) {
