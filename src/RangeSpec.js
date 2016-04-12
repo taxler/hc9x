@@ -46,7 +46,9 @@ define(function() {
 			// return >0 to take precedence, <0 if the other range should take precedence, or 0 if it doesn't matter
 			return 1;
 		},
-		initSubrange: function(subrange) { },
+		initSubrange: function(subrange) {
+			if ('userdata' in this) subrange.userdata = this.userdata;
+		},
 	};
 
 	function reduce_addLength(addTo, object) {
@@ -209,6 +211,7 @@ define(function() {
 			return this.priority - (other.priority || (this.priority - 1));
 		};
 		proto.initSubrange = function(subrange) {
+			RangeSpec.prototype.initSubrange.call(this, subrange);
 			subrange.priority = this.priority;
 		};
 		proto.toJSON = function() {
