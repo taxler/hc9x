@@ -35,6 +35,7 @@ define(function() {
 			}).join(',');
 		},
 		onPiece: function(){},
+		onTotalLength: function(){},
 		onRawPiece: null,
 		initMonolithic: function(offset) {
 			this.onRawPiece = this.onRawPiece || function(piece) {
@@ -159,6 +160,7 @@ define(function() {
 				this.cancel();
 				throw new Error('Invalid Content-Range: ' + contentRange);
 			}
+			this.onTotalLength(+matched[3]);
 			this.initMonolithic(+matched[1]);
 		},
 		openXHR: function(forceMultipart) {
