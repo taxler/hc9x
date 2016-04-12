@@ -4,16 +4,20 @@ define(function() {
 
 	var MIN_GAP = 500;
 
+	function isNafN(v) {
+		return isNaN(v) || !isFinite(v);
+	}
+
 	function PiecemealDownload(url, ranges) {
 		this.url = url;
 		for (var i = ranges.length-2; i >= 0; i--) {
-			if (isNaN(ranges[i].length)) {
+			if (isNafN(ranges[i].length)) {
 				ranges.splice(i + 1, ranges.length - (i + 1));
 			}
 			else {
 				if (ranges[i].offset <= ranges[i + 1].offset
 						&& (ranges[i].offset + ranges[i].length + MIN_GAP) >= ranges[i + 1].offset) {
-					if (isNaN(ranges[i + 1].length)) {
+					if (isNafN(ranges[i + 1].length)) {
 						delete ranges[i].length;
 						ranges.splice(i + 1, ranges.length - (i + 1));
 					}
@@ -31,7 +35,7 @@ define(function() {
 			var ranges = this.ranges;
 			return 'bytes=' + ranges.map(function(range) {
 				return range.offset + '-' + 
-					(isNaN(range.length) ? '' : (range.offset + range.length - 1));
+					(isNafN(range.length) ? '' : (range.offset + range.length - 1));
 			}).join(',');
 		},
 		onPiece: function(){},
@@ -348,7 +352,7 @@ define(function() {
 			var xhr = new XMLHttpRequest;
 			xhr.open('GET', self.url, true);
 			xhr.responseType = 'arraybuffer';
-			var chunkLength = isNaN(length) || length > MANUAL_CHUNK_SIZE ? MANUAL_CHUNK_SIZE : length;
+			var chunkLength = isNafN(length) || length > MANUAL_CHUNK_SIZE ? MANUAL_CHUNK_SIZE : length;
 			xhr.setRequestHeader('Range', 'bytes=' + offset + '-' + (offset + chunkLength - 1));
 			xhr.addEventListener('readystatechange', function() {
 				if (this.readyState === 2) {
@@ -356,7 +360,7 @@ define(function() {
 						xhr.abort();
 						throw new Error('Server returned status ' + xhr.status);
 					}
-					if (isNaN(length)) {
+					if (isNafN(length)) {
 						var range = xhr.getResponseHeader('Content-Range');
 						if (!range) {
 							xhr.abort();
