@@ -78,7 +78,6 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 		putBytes: function(offset, bytes) {
 			var range = new RangeSpecWithBytes(offset, bytes);
 			this.ranges.put(range);
-				debugger;
 			for (var i = this.listeners.length-1; i >= 0; i--) {
 				if (this.listeners[i](offset, bytes) === 'remove') {
 					this.listeners.splice(i, 1);
