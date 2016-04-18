@@ -1,6 +1,6 @@
 define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, PiecemealDownload, RangeSpec) {
 	
-	'use script';
+	'use strict';
 
 	function RangeSpecWithBytes(offset, bytes) {
 		if (bytes instanceof Uint8Array) {
