@@ -131,12 +131,12 @@ define(['Promise', './PiecemealDownloadManager'], function(Promise, PiecemealDow
 				});
 			}
 			else {
-				var openedElement = null;
+				var contentEl = null;
 				var defaultDisplay = 'block';
 				selector.addEventListener('click', function(e) {
 					e.preventDefault();
-					if (openedElement !== null) {
-						openedElement.style.display = openedElement.style.display === 'none' ? defaultDisplay : 'none';
+					if (contentEl !== null) {
+						contentEl.style.display = contentEl.style.display === 'none' ? defaultDisplay : 'none';
 						return;
 					}
 					self.explorer.open(new ByteSourceWindow(self.byteSource, self.byteOffset || 0))
@@ -148,9 +148,10 @@ define(['Promise', './PiecemealDownloadManager'], function(Promise, PiecemealDow
 									cancelable: true
 								});
 								if (item.dispatchEvent(event)) {
+									var contentEl = document.createElement('DIV');
 									defaultDisplay = el.style.display;
-									openedElement = el;
-									item.appendChild(openedElement);
+									contentEl.appendChild(el);
+									item.appendChild(contentEl);
 								}
 							},
 							function(reason) {
