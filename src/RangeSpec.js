@@ -93,7 +93,7 @@ define(function() {
 				if (diff > 0) {
 					if (endOffset <= range.afterOffset) {
 						set.put(this.ranges[i].getSubrange(diff, endOffset - (range.offset + diff)));
-						return;
+						return set;
 					}
 					set.put(range.getSubrange(diff, range.length - diff));
 					startOffset = range.afterOffset;
