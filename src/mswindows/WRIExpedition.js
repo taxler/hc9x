@@ -123,6 +123,12 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 							styleSet.push('text-decoration: underline');
 						}
 						a.userdata.style = styleSet.join('; ');
+						if (info[5] >= 128) {
+							a.userdata.tags = ['SUB'];
+						}
+						else if (info[5] > 0) {
+							a.userdata.tags = ['SUP'];
+						}
 					});
 					paragraphInfo.ranges.forEach(function(para) {
 						if ((para.userdata[16] & 16) !== 0) {
@@ -131,9 +137,10 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 						else {
 							var d = document.createElement('DIV');
 							var styles = charInfo.slice(para.offset, para.offset + para.length);
-							if (styles.ranges.length >= 1 && (styles.ranges.length === 1
+							if (styles.ranges.length >= 1 && (styles.ranges.length > 1
 									|| styles.ranges[0].offset !== para.offset
-									|| styles.ranges[0].length !== para.length)) {
+									|| styles.ranges[0].length !== para.length
+									|| styles.ranges[0].tags)) {
 								var pos = para.offset;
 								for (var i = 0; i < styles.ranges.length; i++) {
 									var range = styles.ranges[i];
@@ -147,6 +154,13 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 									var inData = textData.subarray(range.offset, range.offset + range.length);
 									var inText = String.fromCharCode.apply(null, inData);
 									span.appendChild(document.createTextNode(inText));
+									if (range.userdata.tags) {
+										for (var j = range.userdata.tags.length-1; j >= 0; j--) {
+											var enclosed = document.createElement(range.userdata.tags[j]);
+											enclosed.appendChild(span);
+											span = enclosed;
+										}
+									}
 									d.appendChild(span);
 									pos = range.offset + range.length;
 								}
