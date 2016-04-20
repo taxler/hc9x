@@ -43,7 +43,6 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 			}
 			var count = 0;
 			var buf = new Uint8Array(length);
-			debugger;
 			var current = this.ranges.slice(offset, offset + length);
 			for (var i = 0; i < current.ranges.length; i++) {
 				var range = current.ranges[i];
