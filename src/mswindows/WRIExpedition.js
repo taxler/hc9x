@@ -95,13 +95,14 @@ define(['Promise', '../LegacyExplorer'], function(Promise, LegacyExplorer) {
 									else {
 										var text = String.fromCharCode.apply(null, bytes);
 										var justify = fprop[1] & 3;
-										var paragraph = document.createElement('P');
+										var paragraph = document.createElement('DIV');
 										switch(justify) {
 											case 1: paragraph.style.textAlign = 'center'; break;
 											case 2: paragraph.style.textAlign = 'right'; break;
 											case 3: paragraph.style.textAlign = 'justify'; break;
 										}
 										paragraph.appendChild(document.createTextNode(text));
+										paragraph.innerHTML = paragraph.innerHTML.replace(/\n/g, '<br>');
 										return paragraph;
 									}
 								}));
