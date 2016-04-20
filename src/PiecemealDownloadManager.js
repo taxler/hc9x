@@ -41,29 +41,39 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 			if (length === 0) {
 				return Promise.resolve(new Uint8Array(0));
 			}
-			var count = 0;
 			var buf = new Uint8Array(length);
+
+			var dlRanges = new RangeSpec.Set();
+			dlRanges.put(new RangeSpec(offset, length));
+
 			var current = this.ranges.slice(offset, offset + length);
 			for (var i = 0; i < current.ranges.length; i++) {
 				var range = current.ranges[i];
 				if (!('bytes' in range)) continue;
 				buf.set(range.bytes, range.offset - offset);
-				count += range.bytes.length;
+				dlRanges.clear(range);
 			}
-			if (count === length) {
+			if (dlRanges.ranges.length === 0) {
 				return Promise.resolve(buf);
 			}
 			var self = this;
 			return new Promise(function(resolve, reject) {
-				var dl = new PiecemealDownload(self.url, [{offset:offset, length:length}]);
+				var dl = new PiecemealDownload(self.url, dlRanges.ranges);
 				self.addListener(function(pieceOffset, pieceBytes) {
 					if (pieceOffset >= (offset + length)) return;
 					if ((pieceOffset + pieceBytes.length) <= offset) return;
+					dlRanges.clear(new RangeSpec(pieceOffset, pieceBytes.length));
 					var diff = pieceOffset - offset;
-					pieceBytes = pieceBytes.subarray(diff, Math.min(pieceBytes.length, diff + length));
-					buf.set(pieceBytes, pieceOffset - offset);
-					count += pieceBytes.length;
-					if (count === length) {
+					if (diff < 0) {
+						buf.set(pieceBytes.subarray(-diff));
+					}
+					else if (diff > 0) {
+						buf.set(pieceBytes, diff);
+					}
+					else {
+						buf.set(pieceBytes);
+					}
+					if (dlRanges.ranges.length === 0) {
 						resolve(buf);
 						return 'remove';
 					}
