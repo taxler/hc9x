@@ -148,7 +148,7 @@ define(['Promise', './PiecemealDownloadManager'], function(Promise, PiecemealDow
 									cancelable: true
 								});
 								if (item.dispatchEvent(event)) {
-									var contentEl = document.createElement('DIV');
+									contentEl = document.createElement('DIV');
 									defaultDisplay = el.style.display;
 									contentEl.appendChild(el);
 									item.appendChild(contentEl);
