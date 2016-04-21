@@ -1,4 +1,4 @@
-define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, LegacyExplorer, RangeSpec) {
+define(['Promise', '../LegacyExplorer', '../RangeSpec', './DataView.getWindows1252String'], function(Promise, LegacyExplorer, RangeSpec) {
 
 	'use strict';
 
@@ -7,6 +7,7 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 	var PAP_DEFAULT = new Uint8Array(79);
 	PAP_DEFAULT.set([61, 0, 30]);
 	new DataView(PAP_DEFAULT.buffer, PAP_DEFAULT.byteOffset, PAP_DEFAULT.byteLength).setUint16(10, 240, true);
+
 
 	function WRIExpedition(explorer, byteSource) {
 		this.explorer = explorer;
@@ -104,6 +105,7 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 				})
 				.then(function(values) {
 					var textData = values[0], charInfo = values[1], paragraphInfo = values[2];
+					var textDV = new DataView(textData.buffer, textData.byteOffset, textData.byteLength);
 					charInfo.ranges = charInfo.ranges.filter(function(a) { return a.userdata !== CHP_DEFAULT; });
 					charInfo.ranges.forEach(function(a) {
 						var info = a.userdata;
@@ -145,14 +147,12 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 								for (var i = 0; i < styles.ranges.length; i++) {
 									var range = styles.ranges[i];
 									if (range.offset > pos) {
-										var preData = textData.subarray(pos, range.offset);
-										var preText = String.fromCharCode.apply(null, preData);
+										var preText = textDV.getWindows1252String(pos, range.offset - pos);
 										d.appendChild(document.createTextNode(preText));
 									}
 									var span = document.createElement('SPAN');
 									span.style.cssText = range.userdata.style;
-									var inData = textData.subarray(range.offset, range.offset + range.length);
-									var inText = String.fromCharCode.apply(null, inData);
+									var inText = textDV.getWindows1252String(range.offset, range.length);
 									span.appendChild(document.createTextNode(inText));
 									if (range.userdata.tags) {
 										for (var j = range.userdata.tags.length-1; j >= 0; j--) {
@@ -164,9 +164,9 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 									d.appendChild(span);
 									pos = range.offset + range.length;
 								}
-								if (pos < (para.offset + para.length)) {
-									var postData = textData.subarray(pos, para.offset + para.length);
-									var postText = String.fromCharCode.apply(null, postData);
+								var bytesLeft = para.offset + para.length - pos;
+								if (bytesLeft > 0) {
+									var postText = textDV.getWindows1252String(pos, bytesLeft);
 									d.appendChild(document.createTextNode(postText));
 								}
 							}
@@ -174,8 +174,7 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec'], function(Promise, Legac
 								if (styles.ranges.length === 1) {
 									d.style.cssText = styles.ranges[0].userdata.style;
 								}
-								var paraData = textData.subarray(para.offset, para.offset + para.length);
-								var paraText = String.fromCharCode.apply(null, paraData);
+								var paraText = textDV.getWindows1252String(para.offset, para.length);
 								d.appendChild(document.createTextNode(paraText));
 							}
 							switch(para.userdata[1] & 3) {
