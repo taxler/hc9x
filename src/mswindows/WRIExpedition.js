@@ -180,7 +180,6 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec', '../Rgba', './DataView.g
 										pos += 8;
 										// BITMAPFILEHEADER is missing
 										var size = headerDV.getUint32(pos, true);
-										console.log(size);
 										pos += 4;
 										// BITMAPINFOHEADER:
 										var headerSize = headerDV.getUint32(pos, true);
