@@ -1,4 +1,5 @@
-define(['Promise', '../LegacyExplorer', '../RangeSpec', './DataView.getWindows1252String'], function(Promise, LegacyExplorer, RangeSpec) {
+define(['Promise', '../LegacyExplorer', '../RangeSpec', '../Rgba', './DataView.getWindows1252String'],
+	function(Promise, LegacyExplorer, RangeSpec, Rgba) {
 
 	'use strict';
 
@@ -135,56 +136,166 @@ define(['Promise', '../LegacyExplorer', '../RangeSpec', './DataView.getWindows12
 					paragraphInfo.ranges.forEach(function(para) {
 						if ((para.userdata[16] & 16) !== 0) {
 							// TODO: handle images
-						}
-						else {
-							var d = document.createElement('DIV');
-							var styles = charInfo.slice(para.offset, para.offset + para.length);
-							if (styles.ranges.length >= 1 && (styles.ranges.length > 1
-									|| styles.ranges[0].offset !== para.offset
-									|| styles.ranges[0].length !== para.length
-									|| styles.ranges[0].tags)) {
-								var pos = para.offset;
-								for (var i = 0; i < styles.ranges.length; i++) {
-									var range = styles.ranges[i];
-									if (range.offset > pos) {
-										var preText = textDV.getWindows1252String(pos, range.offset - pos);
-										d.appendChild(document.createTextNode(preText));
+							var imageData = textData.subarray(para.offset, para.offset + para.length);
+							var imageDV = new DataView(imageData.buffer, imageData.byteOffset, imageData.byteLength);
+							if (imageData[0] === 0xE4) {
+								// OLE object
+								var mode = imageData[6];
+								switch (mode) {
+									case 1: mode = 'static'; break;
+									case 2: mode = 'embedded'; break;
+									case 3: mode = 'link'; break;
+								}
+								var twipWidth = imageDV.getUint16(10, true);
+								var twipHeight = imageDV.getUint16(12, true);
+								var dataByteLength = imageDV.getUint32(16, true);
+								var objectNumber = imageDV.getUint32(24, true);
+								var uniqueName = objectNumber.toString(16);
+								while (uniqueName.length < 8) uniqueName = '0' + uniqueName;
+								var headerByteLength = imageDV.getUint16(30, true);
+								var scalingFactorX = imageDV.getUint16(36, true);
+								var scalingFactorY = imageDV.getUint16(38, true);
+								if (mode === 'static') {
+									var header = textData.subarray(para.offset + 40);
+									var headerDV = new DataView(header.buffer, header.byteOffset, header.byteLength);
+									if (headerDV.getUint32(0, true) !== 0x501) {
+										console.log('Unexpected OLE object tag');
+										return;
 									}
-									var span = document.createElement('SPAN');
-									span.style.cssText = range.userdata.style;
-									var inText = textDV.getWindows1252String(range.offset, range.length);
-									span.appendChild(document.createTextNode(inText));
-									if (range.userdata.tags) {
-										for (var j = range.userdata.tags.length-1; j >= 0; j--) {
-											var enclosed = document.createElement(range.userdata.tags[j]);
-											enclosed.appendChild(span);
-											span = enclosed;
+									var checkMode = headerDV.getUint32(4, true);
+									switch(checkMode) {
+										case 3: checkMode = 'static'; break;
+										case 2: checkMode = 'embedded'; break;
+										case 1: checkMode = 'link'; break;
+									}
+									if (checkMode !== mode) {
+										console.log('OLE object type tags do not match');
+										return;
+									}
+									var pos = 12 + headerDV.getUint32(8, true);
+									var typeName = headerDV.getWindows1252String(12, pos - 12);
+									typeName = typeName.replace(/\0.*/, '');
+									if (typeName === 'DIB') {
+										// 8 unknown bytes
+										pos += 8;
+										// BITMAPFILEHEADER is missing
+										var size = headerDV.getUint32(pos, true);
+										console.log(size);
+										pos += 4;
+										// BITMAPINFOHEADER:
+										var headerSize = headerDV.getUint32(pos, true);
+										if (headerSize === 40) {										
+											var width = headerDV.getInt32(pos + 4, true);
+											var height = headerDV.getInt32(pos + 8, true);
+											var y_start, y_stop, y_offset;
+											if (height < 0) {
+												height = -height;
+												y_start = 0;
+												y_stop = height;
+												y_offset = 1;
+											}
+											else {
+												y_start = height - 1;
+												y_stop = -1;
+												y_offset = -1;
+											}
+											var planes = headerDV.getUint16(pos + 12, true);
+											var bitCount = headerDV.getUint16(pos + 14, true);
+											var compression = headerDV.getUint32(pos + 16, true);
+											var sizeImage = headerDV.getUint32(pos + 20, true);
+											var xPelsPerMeter = headerDV.getInt32(pos + 24, true);
+											var yPelsPerMeter = headerDV.getInt32(pos + 28, true);
+											var colorsUsed = headerDV.getUint32(pos + 32, true);
+											if (colorsUsed === 0 && bitCount < 16) {
+												colorsUsed = 1 << bitCount;
+											}
+											var colorsImportant = headerDV.getUint32(pos + 36, true);
+											if (compression !== 0) {
+												console.log('DIB compression mode: ' + compression);
+												return;
+											}
+											if (bitCount !== 8) {
+												console.log('DIB bpp: ' + bitCount);
+												return;
+											}
+											pos += headerSize;
+											var colors = new Array(colorsUsed);
+											for (var i = 0; i < colorsUsed; i++) {
+												colors[i] = new Rgba(header[pos+2], header[pos+1], header[pos]);
+												pos += 4;
+											}
+											colors = new Rgba.Collection(colors).toPixel32Array();
+											var canvas = document.createElement('CANVAS');
+											canvas.width = width;
+											canvas.height = height;
+											var ctx = canvas.getContext('2d');
+											self.article.appendChild(canvas);
+											var imageData = ctx.createImageData(width, height);
+											var pixelsRgba = new Uint32Array(
+												imageData.data.buffer,
+												imageData.data.byteOffset,
+												imageData.data.byteLength / 4);
+											var stride = width%4 === 0 ? width : width + 4 - (width % 4);
+											for (var y = y_start; y !== y_stop; y += y_offset) {
+												for (var x = 0; x < width; x++) {
+													pixelsRgba[(y * width) + x] = colors[header[pos + x]];
+												}
+												pos += stride;
+											}
+											ctx.putImageData(imageData, 0, 0);
 										}
 									}
-									d.appendChild(span);
-									pos = range.offset + range.length;
-								}
-								var bytesLeft = para.offset + para.length - pos;
-								if (bytesLeft > 0) {
-									var postText = textDV.getWindows1252String(pos, bytesLeft);
-									d.appendChild(document.createTextNode(postText));
 								}
 							}
-							else {
-								if (styles.ranges.length === 1) {
-									d.style.cssText = styles.ranges[0].userdata.style;
-								}
-								var paraText = textDV.getWindows1252String(para.offset, para.length);
-								d.appendChild(document.createTextNode(paraText));
-							}
-							switch(para.userdata[1] & 3) {
-								case 1: d.style.textAlign = 'center'; break;
-								case 2: d.style.textAlign = 'right'; break;
-								case 3: d.style.textAlign = 'justify'; break;
-							}
-							d.innerHTML = d.innerHTML.replace(/\n/g, '<br>');
-							self.article.appendChild(d);
+							return;
 						}
+						var d = document.createElement('DIV');
+						var styles = charInfo.slice(para.offset, para.offset + para.length);
+						if (styles.ranges.length >= 1 && (styles.ranges.length > 1
+								|| styles.ranges[0].offset !== para.offset
+								|| styles.ranges[0].length !== para.length
+								|| styles.ranges[0].tags)) {
+							var pos = para.offset;
+							for (var i = 0; i < styles.ranges.length; i++) {
+								var range = styles.ranges[i];
+								if (range.offset > pos) {
+									var preText = textDV.getWindows1252String(pos, range.offset - pos);
+									d.appendChild(document.createTextNode(preText));
+								}
+								var span = document.createElement('SPAN');
+								span.style.cssText = range.userdata.style;
+								var inText = textDV.getWindows1252String(range.offset, range.length);
+								span.appendChild(document.createTextNode(inText));
+								if (range.userdata.tags) {
+									for (var j = range.userdata.tags.length-1; j >= 0; j--) {
+										var enclosed = document.createElement(range.userdata.tags[j]);
+										enclosed.appendChild(span);
+										span = enclosed;
+									}
+								}
+								d.appendChild(span);
+								pos = range.offset + range.length;
+							}
+							var bytesLeft = para.offset + para.length - pos;
+							if (bytesLeft > 0) {
+								var postText = textDV.getWindows1252String(pos, bytesLeft);
+								d.appendChild(document.createTextNode(postText));
+							}
+						}
+						else {
+							if (styles.ranges.length === 1) {
+								d.style.cssText = styles.ranges[0].userdata.style;
+							}
+							var paraText = textDV.getWindows1252String(para.offset, para.length);
+							d.appendChild(document.createTextNode(paraText));
+						}
+						switch(para.userdata[1] & 3) {
+							case 1: d.style.textAlign = 'center'; break;
+							case 2: d.style.textAlign = 'right'; break;
+							case 3: d.style.textAlign = 'justify'; break;
+						}
+						d.innerHTML = d.innerHTML.replace(/\n/g, '<br>');
+						self.article.appendChild(d);
 					});
 				})
 				.then(function() {
