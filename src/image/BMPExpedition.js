@@ -124,6 +124,9 @@ define(['Promise', '../LegacyExplorer', '../Rgba'], function(Promise, LegacyExpl
 									pixel = (x&1 === 1) ? pixel & 0xf : pixel >> 4;
 									rgba = p[pixel];
 									break;
+								case 8:
+									rgba = p[pixelData[row_base + x]];
+									break;
 								default: return Promise.reject('Unsupported BPP: ' + bpp);
 							}
 							rgbaData[y*w + x] = rgba;
