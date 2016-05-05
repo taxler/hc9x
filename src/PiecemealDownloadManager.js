@@ -65,14 +65,13 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 					dlRanges.clear(new RangeSpec(pieceOffset, pieceBytes.length));
 					var diff = pieceOffset - offset;
 					if (diff < 0) {
-						buf.set(pieceBytes.subarray(-diff));
+						pieceBytes = pieceBytes.subarray(-diff);
+						diff = 0;
 					}
-					else if (diff > 0) {
-						buf.set(pieceBytes, diff);
+					if (diff + pieceBytes.length > buf.length) {
+						pieceBytes = pieceBytes.subarray(0, buf.length - diff);
 					}
-					else {
-						buf.set(pieceBytes);
-					}
+					buf.set(pieceBytes, diff);
 					if (dlRanges.ranges.length === 0) {
 						resolve(buf);
 						return 'remove';
