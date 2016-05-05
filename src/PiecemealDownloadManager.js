@@ -15,7 +15,7 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 		proto.constructor = RangeSpecWithBytes;
 		proto.initSubrange = function(subrange) {
 			RangeSpec.prototype.initSubrange.apply(this, arguments);
-			subrange.bytes = this.bytes.subarray(subrange.offset - this.offset, subrange.length);
+			subrange.bytes = this.bytes.subarray(subrange.offset - this.offset, subrange.offset + subrange.length - this.offset);
 		};
 		proto.compareTo = function(other) {
 			return 1;
