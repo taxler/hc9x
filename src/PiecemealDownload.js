@@ -18,11 +18,14 @@ define(function() {
 				if (ranges[i].offset <= ranges[i + 1].offset
 						&& (ranges[i].offset + ranges[i].length + MIN_GAP) >= ranges[i + 1].offset) {
 					if (isNafN(ranges[i + 1].length)) {
-						delete ranges[i].length;
+						ranges[i] = {offset: ranges[i].offset};
 						ranges.splice(i + 1, ranges.length - (i + 1));
 					}
 					else {
-						ranges[i].length = (ranges[i+1].offset + ranges[i+1].length) - ranges[i].offset;
+						ranges[i] = {
+							offset: ranges[i].offset,
+							length: ranges[i].length = (ranges[i+1].offset + ranges[i+1].length) - ranges[i].offset,
+						};
 						ranges.splice(i + 1, 1);
 					}
 				}
