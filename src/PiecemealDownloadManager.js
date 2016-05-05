@@ -58,7 +58,30 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 			}
 			var self = this;
 			return new Promise(function(resolve, reject) {
-				var dl = new PiecemealDownload(self.url, dlRanges.ranges);
+				var minLength = 16 * 1024;
+				var extraLength = minLength - dlRanges.totalLength;
+				var extraRanges = [];
+				if (extraLength > 0) {
+					for (var i = 1; i < dlRanges.ranges.length; i++) {
+						var afterPrev = dlRanges[i-1].offset + dlRanges[i-1].length;
+						var diff = dlRanges.ranges[i].offset - afterPrev;
+						if (diff > 0) {
+							diff = Math.min(extraLength, diff);
+							if (diff === 0) break;
+							extraRanges.push({offset:afterPrev, length:diff});
+							extraLength -= diff;
+						}
+					}
+					if (extraLength > 0) {
+						var lastRange = dlRanges.ranges[dlRanges.ranges.length - 1];
+						if (isFinite(lastRange.length)) {
+							extraRanges.push({offset:lastRange.offset + lastRange.length, length:extraLength});
+						}
+					}
+					console.log(dlRanges.ranges.concat(extraRanges));
+				}
+				var allRanges = [].concat(dlRanges.ranges, extraRanges);
+				var dl = new PiecemealDownload(self.url, allRanges);
 				self.addListener(function(pieceOffset, pieceBytes) {
 					if (pieceOffset >= (offset + length)) return;
 					if ((pieceOffset + pieceBytes.length) <= offset) return;
