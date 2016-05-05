@@ -58,30 +58,6 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 			}
 			var self = this;
 			return new Promise(function(resolve, reject) {
-				var minLength = 16 * 1024;
-				var extraLength = minLength - dlRanges.totalLength;
-				var extraRanges = [];
-				if (extraLength > 0) {
-					for (var i = 1; i < dlRanges.ranges.length; i++) {
-						var afterPrev = dlRanges[i-1].offset + dlRanges[i-1].length;
-						var diff = dlRanges.ranges[i].offset - afterPrev;
-						if (diff > 0) {
-							diff = Math.min(extraLength, diff);
-							if (diff === 0) break;
-							extraRanges.push({offset:afterPrev, length:diff});
-							extraLength -= diff;
-						}
-					}
-					if (extraLength > 0) {
-						var lastRange = dlRanges.ranges[dlRanges.ranges.length - 1];
-						if (isFinite(lastRange.length)) {
-							extraRanges.push({offset:lastRange.offset + lastRange.length, length:extraLength});
-						}
-					}
-					console.log(dlRanges.ranges.concat(extraRanges));
-				}
-				var allRanges = [].concat(dlRanges.ranges, extraRanges);
-				var dl = new PiecemealDownload(self.url, allRanges);
 				self.addListener(function(pieceOffset, pieceBytes) {
 					if (pieceOffset >= (offset + length)) return;
 					if ((pieceOffset + pieceBytes.length) <= offset) return;
@@ -100,10 +76,7 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 						return 'remove';
 					}
 				});
-				dl.onPiece = function(pieceOffset, pieceBytes) {
-					self.putBytes(pieceOffset, pieceBytes);
-				};
-				dl.startDownload();
+				self.queueForDownload(dlRanges);
 			});
 		},
 		putBytes: function(offset, bytes) {
@@ -126,6 +99,48 @@ define(['Promise', './PiecemealDownload', './RangeSpec'], function(Promise, Piec
 			if (i === -1) return false;
 			this.listeners.splice(i, 1);
 			return true;
+		},
+		queueForDownload: function(dlRanges) {
+			if ('queuedRanges' in this) {
+				for (var i = 0; i < dlRanges.ranges.length; i++) {
+					this.queuedRanges.put(dlRanges.ranges[i]);
+				}
+			}
+			else {
+				this.queuedRanges = new RangeSpec.Set();
+				this.queuedRanges.ranges = dlRanges.ranges.slice();
+				this.queueTimeout = window.setTimeout(this.requestForQueue.bind(this), 5);
+			}
+		},
+		requestForQueue: function() {
+			var dlRanges = this.queuedRanges;
+			delete this.queuedRanges;
+			delete this.queueTimeout;
+			var minLength = 16 * 1024;
+			var extraLength = minLength - dlRanges.totalLength;
+			var extraRanges = [];
+			if (extraLength > 0) {
+				for (var i = 1; i < dlRanges.ranges.length; i++) {
+					var afterPrev = dlRanges.ranges[i-1].offset + dlRanges.ranges[i-1].length;
+					var diff = dlRanges.ranges[i].offset - afterPrev;
+					if (diff > 0) {
+						diff = Math.min(extraLength, diff);
+						if (diff === 0) break;
+						extraRanges.push({offset:afterPrev, length:diff});
+						extraLength -= diff;
+					}
+				}
+				if (extraLength > 0) {
+					var lastRange = dlRanges.ranges[dlRanges.ranges.length - 1];
+					if (isFinite(lastRange.length)) {
+						extraRanges.push({offset:lastRange.offset + lastRange.length, length:extraLength});
+					}
+				}
+			}
+			var allRanges = [].concat(dlRanges.ranges, extraRanges);
+			var dl = new PiecemealDownload(this.url, allRanges);
+			dl.onPiece = this.putBytes.bind(this);
+			dl.startDownload();			
 		},
 	};
 
